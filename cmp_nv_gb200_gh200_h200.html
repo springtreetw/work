@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Infrastructure Risk Assessment: GB200 vs GH200 vs H200</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-gray: #64748b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        h1, h2, h3 {
+            font-weight: 600;
+            margin-top: 0;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+            letter-spacing: 1px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+        }
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .card-header {
+            font-size: 1.5rem;
+            color: var(--accent-blue);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 1.5rem 0 0.5rem 0;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        li {
+            margin-bottom: 0.75rem;
+            padding-left: 1rem;
+            border-left: 2px solid var(--accent-gray);
+        }
+        .risk-item {
+            border-left-color: var(--accent-red);
+        }
+        .highlight {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 3rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Architectural Risk Assessment: GB200 vs GH200 vs H200</h1>
+
+    <div class="container">
+        <!-- H200 Analysis -->
+        <div class="card">
+            <div class="card-header">NVIDIA H200 (x86 + HGX)</div>
+            <p>Traditional discrete architecture relying on x86 Host CPU and PCIe Gen5 interfaces.</p>
+            
+            <div class="section-title">Architectural Intent & Dynamics</div>
+            <ul>
+                <li>Maximize memory capacity/bandwidth (<span class="highlight">141GB HBM3e</span>) without disrupting existing x86 IT infrastructure.</li>
+                <li>Zero-friction migration for legacy applications and firmware compilation toolchains.</li>
+            </ul>
+
+            <div class="section-title risk-item">Systemic Frictions & Risks</div>
+            <ul>
+                <li class="risk-item"><strong>The PCIe Bottleneck:</strong> Data transfer between the x86 CPU and GPU remains constrained by physical PCIe bandwidth limits, creating latency in heavily host-dependent workflows.</li>
+                <li class="risk-item"><strong>Thermal Concentration:</strong> 8-GPU HGX baseboards create extreme thermal density per rack unit, drastically increasing the risk of thermal throttling in air-cooled environments.</li>
+                <li class="risk-item"><strong>Capital Risk:</strong> High procurement premium for what is essentially an end-of-lifecycle architecture before the Blackwell transition.</li>
+            </ul>
+        </div>
+
+        <!-- GH200 Analysis -->
+        <div class="card">
+            <div class="card-header">NVIDIA GH200 (ARM Integration)</div>
+            <p>Transitional architecture coupling Grace CPU (ARM) and Hopper GPU via NVLink-C2C.</p>
+            
+            <div class="section-title">Architectural Intent & Dynamics</div>
+            <ul>
+                <li>Physically eliminate the PCIe bottleneck. NVLink-C2C provides <span class="highlight">900 GB/s</span> bidirectional bandwidth, creating a massive unified memory pool.</li>
+                <li>Designed for memory-bound workloads like massive Graph Neural Networks (GNNs).</li>
+            </ul>
+
+            <div class="section-title risk-item">Systemic Frictions & Risks</div>
+            <ul>
+                <li class="risk-item"><strong>Ecosystem Isolation:</strong> Forces a strict transition to ARM (aarch64) Linux. Low-level FW debugging tools, cross-compilers, and proprietary FPGA programmers often lack native ARM support.</li>
+                <li class="risk-item"><strong>Integration Complexity:</strong> Hardware-level debugging (handling IPC queues, UPIU packet parsing) becomes highly unpredictable due to driver immaturity on ARM server platforms.</li>
+                <li class="risk-item"><strong>Stranded Asset Risk:</strong> GH200 is widely considered a transitional testbed. It possesses a high risk of rapid obsolescence without achieving long-term ROI.</li>
+            </ul>
+        </div>
+
+        <!-- GB200 Analysis -->
+        <div class="card">
+            <div class="card-header">NVIDIA GB200 (NVL2 / Rack-Scale)</div>
+            <p>Next-generation scale-up architecture. Tightly coupled Grace CPUs and Blackwell GPUs.</p>
+            
+            <div class="section-title">Architectural Intent & Dynamics</div>
+            <ul>
+                <li>Redefine the computational base unit from a "server node" to a "rack".</li>
+                <li>Maximum throughput for large-scale LLM training and real-time inference routing via massive NVLink domains.</li>
+            </ul>
+
+            <div class="section-title risk-item">Systemic Frictions & Risks</div>
+            <ul>
+                <li class="risk-item"><strong>Infrastructure Mandate:</strong> Requires a complete overhaul of datacenter power delivery and mandatory liquid-cooling infrastructure.</li>
+                <li class="risk-item"><strong>Firmware & Control Logic Complexity:</strong> Managing hardware states across such a massive topology is highly fragile. Precise differentiation and execution of <span class="highlight">AON resets</span> vs <span class="highlight">PSW resets</span> across interconnected nodes require extremely mature baseboard management (BMC) firmware.</li>
+                <li class="risk-item"><strong>Overkill / Capital Misallocation:</strong> Deploying this architecture for localized testing agents or isolated inference tasks results in severe underutilization of the C2C interconnects.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        Evaluation Principle: Reject linear attribution. Assess hardware not by theoretical peaks, but by the friction it introduces into existing software toolchains and physical infrastructure. 
+    </div>
+
+</body>
+</html>
