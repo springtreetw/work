@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentation: NVIDIA AI Accelerators & Infrastructure Scalability</title>
+    <style>
+        :root {
+            --bg-main: #060814;
+            --bg-card: #0b1120;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #76b900; 
+            --accent-cyan: #06b6d4;
+            --accent-red: #f43f5e;
+            --border-color: #1e293b;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden; /* Prevent body scroll, use deck scroll */
+        }
+
+        /* Presentation Deck Container */
+        .deck {
+            height: 100vh;
+            width: 100vw;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            /* Hide scrollbar for a cleaner slide look */
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        .deck::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Individual Slide */
+        .slide {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-image: 
+                linear-gradient(rgba(118, 185, 0, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(118, 185, 0, 0.02) 1px, transparent 1px);
+            background-size: 30px 30px;
+            box-sizing: border-box;
+            padding: 40px;
+        }
+
+        .slide::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+            opacity: 0.7;
+        }
+
+        /* Content Wrapper inside Slide */
+        .slide-content {
+            width: 100%;
+            max-width: 1100px;
+            background: rgba(11, 17, 32, 0.85);
+            padding: 40px 50px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .slide-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .slide-content::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 32pt;
+            margin: 0 0 10px 0;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 14pt;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 22pt;
+            color: var(--text-main);
+            border-left: 5px solid var(--accent-green);
+            padding-left: 15px;
+            margin-top: 0;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            text-transform: uppercase;
+        }
+
+        h3 {
+            font-size: 14pt;
+            color: var(--accent-cyan);
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p, li {
+            font-size: 11.5pt;
+            line-height: 1.6;
+            color: #cbd5e1;
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        ul {
+            padding-left: 25px;
+            list-style-type: none;
+        }
+
+        li {
+            position: relative;
+        }
+
+        li::before {
+            content: "//";
+            position: absolute;
+            left: -25px;
+            color: var(--accent-green);
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        strong {
+            color: #ffffff;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 10pt;
+            font-family: monospace;
+            font-weight: bold;
+            border-radius: 4px;
+            margin-left: 15px;
+            vertical-align: middle;
+        }
+        .badge-green { background: rgba(118, 185, 0, 0.15); color: var(--accent-green); border: 1px solid rgba(118, 185, 0, 0.3); }
+        .badge-cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .badge-red { background: rgba(244, 63, 94, 0.15); color: var(--accent-red); border: 1px solid rgba(244, 63, 94, 0.3); }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 11pt;
+            background: rgba(18, 27, 46, 0.6);
+            border: 1px solid var(--border-color);
+        }
+        th, td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #0f172a;
+            color: var(--text-main);
+            text-transform: uppercase;
+            font-size: 10pt;
+        }
+
+        /* Risk Cards */
+        .risk-card {
+            background: rgba(244, 63, 94, 0.03);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-red);
+        }
+        .risk-card h4 {
+            margin: 0 0 10px 0;
+            color: var(--accent-red);
+            font-size: 12pt;
+            text-transform: uppercase;
+            font-family: monospace;
+        }
+
+        /* Slide Number Indicator */
+        .slide-number {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 12pt;
+            opacity: 0.6;
+        }
+        .instruction {
+            position: absolute;
+            bottom: 20px;
+            left: 30px;
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 10pt;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="deck">
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="slide-content" style="text-align: center; border: none; background: transparent; box-shadow: none;">
+            <h1>NVIDIA AI Hardware Infrastructure</h1>
+            <div class="subtitle">System Evaluation &amp; Deployment Risk Matrix</div>
+            <p style="text-align: center; margin-top: 40px; color: var(--text-muted); font-family: monospace;">
+                CONFIDENTIAL ARCHITECTURE REVIEW<br>
+                COMPILED FROM OEM DATASHEETS
+            </p>
+        </div>
+        <div class="instruction">Scroll Down &darr;</div>
+        <div class="slide-number">01</div>
+    </section>
+
+    <!-- Slide 2: H200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>1. NVIDIA H200 <span class="badge badge-green">Hopper</span></h2>
+            <ul>
+                <li><strong>Launch Timeline:</strong> Announced Nov 2023; production deployments initialized Q2 2024.</li>
+                <li><strong>Hardware Architecture:</strong> Memory subsystem optimization built upon the Hopper core. Retains the baseline H100 compute die layout but upgrades the physical memory infrastructure. Form factors: SXM5 (module boards) and NVL (PCIe Gen5 dual-slot).</li>
+                <li><strong>Software Environment:</strong> Native compatibility with standard CUDA computation stacks. NVL SKU includes integrated NVIDIA AI Enterprise licensing; SXM5 requires secondary vendor licensing.</li>
+                <li><strong>Compute Performance:</strong> Integrates 141 GB of HBM3e unified memory reaching 4.8 TB/s bandwidth. Peak tensor processing is 3,958 TFLOPS (FP8). Mitigates data-starvation during LLM inference execution loops.</li>
+                <li><strong>Thermal &amp; Electrical Envelopes:</strong> Maximum TDP specified at 700W (SXM5) and 600W (NVL). Demands high-velocity air volume or integrated Direct Liquid Cooling (DLC).</li>
+            </ul>
+        </div>
+        <div class="slide-number">02</div>
+    </section>
+
+    <!-- Slide 3: B200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>2. NVIDIA B200 <span class="badge badge-green">Blackwell</span></h2>
+            <ul>
+                <li><strong>Launch Timeline:</strong> Unveiled March 2024; production scaling ramping up through late 2024 and 2025.</li>
+                <li><strong>Hardware Architecture:</strong> Implements a dual-die packaging layout embedding 208 billion transistors. Separate dies are linked via a 10 TB/s ultra-low-latency C2C interconnect. Primarily deployed via HGX 8-GPU baseboards.</li>
+                <li><strong>Software Environment:</strong> Tied strictly to NVIDIA AI Enterprise. Implements primitive-level support for 5th-gen Tensor Cores and native execution for lower-precision formats.</li>
+                <li><strong>Compute Performance:</strong> Features 192 GB of HBM3e achieving 8.0 TB/s bandwidth (2.4x over H100). Yields 9,000 TFLOPS of native FP4 processing capacity. Unlocks up to a 4x inference throughput velocity gain compared to prior generations.</li>
+                <li><strong>Thermal Envelopes:</strong> Maximum operational TDP scales between 1,000W and 1,200W per GPU. High-density compute fabrics rely fundamentally on facility-level liquid infrastructure.</li>
+            </ul>
+        </div>
+        <div class="slide-number">03</div>
+    </section>
+
+    <!-- Slide 4: GH200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>3. NVIDIA GH200 <span class="badge badge-cyan">Grace Hopper</span></h2>
+            <ul>
+                <li><strong>Launch Timeline:</strong> Formally introduced May 2023; broad volume availability achieved across enterprise networks throughout 2024.</li>
+                <li><strong>Hardware Architecture:</strong> A monolithic motherboard architecture pairing a 72-core ARM-based Grace CPU with a Hopper-based GPU core. Data coherency sustained over a 900 GB/s bidirectional NVLink-C2C connection.</li>
+                <li><strong>Software Environment:</strong> Supported natively by NVIDIA AI Enterprise. Executes ARM-compatible Linux environments and bridges directly into the standard CUDA framework.</li>
+                <li><strong>Compute Performance:</strong> Allocates up to 624 GB of unified memory (144 GB HBM3e for GPU + 480 GB LPDDR5X for CPU). Peak FP8 tensor compute mirrors the standard Hopper core at 3,958 TFLOPS. Removes legacy PCIe bus bottlenecks.</li>
+                <li><strong>Thermal Envelopes:</strong> Combined module peak power sits at ~1,000W. Liquid cooling configurations represent the core engineering guideline, with specialized enterprise chassis providing air-cooled validation.</li>
+            </ul>
+        </div>
+        <div class="slide-number">04</div>
+    </section>
+
+    <!-- Slide 5: GB200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>4. NVIDIA GB200 <span class="badge badge-cyan">Grace Blackwell</span></h2>
+            <ul>
+                <li><strong>Launch Timeline:</strong> Disclosed March 2024; large-scale multi-cabinet deployments active throughout 2025.</li>
+                <li><strong>Hardware Architecture:</strong> Heterogeneous compute module interconnecting one 72-core Grace CPU with two Blackwell GPUs. Deployed in ultra-dense integrated cabinets (NVL72/NVL36) and localized dual-superchip configurations (NVL2).</li>
+                <li><strong>Software Environment:</strong> Deeply coupled with NVIDIA AI Enterprise, incorporating low-level kernel driver mechanics for unified dual-GPU memory addressing.</li>
+                <li><strong>Compute Performance:</strong> Provisions up to 864 GB of unified cache memory. A single engine generates up to 18,000 TFLOPS of theoretical FP4 throughput.</li>
+                <li><strong>Thermal Envelopes:</strong> Peak TDP reaches up to 2,700W per assembly. NVL72 demands up to 130kW per cabinet and <strong>mandates closed-loop Direct Liquid Cooling (DLC)</strong>. NVL2 utilizes power-shaping to permit high-airflow 19-inch rack enclosures.</li>
+            </ul>
+        </div>
+        <div class="slide-number">05</div>
+    </section>
+
+    <!-- Slide 6: Comparison -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>5. Architecture Matrix</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metrics</th>
+                        <th>H200</th>
+                        <th>B200</th>
+                        <th>GH200</th>
+                        <th>GB200</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Compute Mix</strong></td>
+                        <td>Hopper GPU</td>
+                        <td>Blackwell GPU</td>
+                        <td>Grace CPU + Hopper</td>
+                        <td>Grace CPU + 2x Blackwell</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Max Memory</strong></td>
+                        <td>141 GB HBM3e</td>
+                        <td>192 GB HBM3e</td>
+                        <td>Up to 624 GB</td>
+                        <td>Up to 864 GB</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bandwidth</strong></td>
+                        <td>4.8 TB/s</td>
+                        <td>8.0 TB/s</td>
+                        <td>4.8 TB/s</td>
+                        <td>8.0 TB/s (Per GPU)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Peak TDP</strong></td>
+                        <td>~700W</td>
+                        <td>1,000W - 1,200W</td>
+                        <td>~1,000W</td>
+                        <td>~2,700W Module</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cooling</strong></td>
+                        <td>Air / Liquid</td>
+                        <td>Air / Liquid</td>
+                        <td>Air / Liquid</td>
+                        <td>Liquid (NVL72) / Air (NVL2)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="slide-number">06</div>
+    </section>
+
+    <!-- Slide 7: Servers -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>6. Server Availability (&le; 4 Engines)</h2>
+            <p>Based on rigorous verification of current OEM engineering data sheets for standalone footprints:</p>
+            
+            <h3>■ HPE</h3>
+            <ul>
+                <li><strong>ProLiant DL384 Gen12:</strong> 2U format. Currently supports dual NVIDIA GH200 NVL2. Engineering roadmap confirms integration for <strong>Dual NVIDIA GB200 NVL2</strong> inside this identical footprint.</li>
+                <li><strong>ProLiant DL380a Gen12:</strong> 2U format, validated for up to 4x NVIDIA H200 NVL (PCIe).</li>
+            </ul>
+
+            <h3>■ Dell Technologies</h3>
+            <ul>
+                <li><strong>PowerEdge R760xa:</strong> 2U format engineered for up to 4x NVIDIA H200 NVL (PCIe). <em>(Dell bypassed low-density standalone ARM-based GH200 development).</em></li>
+            </ul>
+
+            <h3>■ Supermicro</h3>
+            <ul>
+                <li><strong>ARS-111GL-NHR:</strong> 1U enclosure optimizing a single air-cooled NVIDIA GH200 Grace Hopper, strictly for edge or isolated sandboxes.</li>
+                <li><strong>SYS-421GE-TNRT:</strong> 4U multi-socket Xeon architecture supporting up to 4x NVIDIA H200 NVL (PCIe).</li>
+            </ul>
+        </div>
+        <div class="slide-number">07</div>
+    </section>
+
+    <!-- Slide 8: Risks Part 1 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>7. Node-to-Rack Expansion Risks (1/2)</h2>
+            <p>Deploying a singular node with an intended roadmap to scale horizontally into multi-node racks encounters immediate systemic boundaries.</p>
+            
+            <div class="risk-card">
+                <h4>Risk I: Thermal &amp; Electrical Disconnect <span class="badge badge-red">Critical</span></h4>
+                <p>A single node (e.g., DL384 Gen12 housing GB200 NVL2) operates within traditional air-cooled parameters. However, expanding to HGX blocks or NVL72 racks instantly scales power from 15kW to >130kW per rack. Legacy air cooling cannot dissipate this. Scaling requires massive CAPEX for Coolant Distribution Units (CDUs) and power step-downs. The initial air-cooled asset shares zero infrastructure commonalities with the expanded rack.</p>
+            </div>
+
+            <div class="risk-card">
+                <h4>Risk II: Interconnect Bottlenecks <span class="badge badge-red">Performance Penalty</span></h4>
+                <p>AI workloads are bound by East-West interconnect bandwidth. Within a single enclosure, chips utilize high-velocity NVLink. When multiple servers are accumulated in a rack, cross-node communication must offload via standard NICs (InfiniBand/Ethernet), completely bypassing NVLink. This creates severe latency penalties, sharply degrading ROI of the aggregated hardware.</p>
+            </div>
+        </div>
+        <div class="slide-number">08</div>
+    </section>
+
+    <!-- Slide 9: Risks Part 2 & Conclusion -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>7. Node-to-Rack Expansion Risks (2/2)</h2>
+            
+            <div class="risk-card">
+                <h4>Risk III: Heterogeneous Cluster Imbalances <span class="badge badge-red">Lifecycle</span></h4>
+                <p>Cluster automation layers (Kubernetes/Slurm) achieve peak optimization only across strictly homogeneous setups. Mixing Hopper nodes purchased today with Blackwell racks purchased next year forces schedulers to throttle synchronization to the slowest node. The initial hardware must be segregated entirely.</p>
+            </div>
+
+            <div style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.2); padding: 25px; border-radius: 6px; margin-top: 30px;">
+                <h3 style="margin-top: 0; color: var(--accent-cyan); font-family: monospace;">Strategic Conclusion</h3>
+                <p style="margin-bottom: 0;">AI environments demand a top-down engineering methodology: facility limits must be established prior to localized node procurement. A bottom-up strategy is architecturally flawed. The initial standalone node must be financially categorized as an isolated inference sandbox, not a modular building block for scale-out expansion.</p>
+            </div>
+        </div>
+        <div class="slide-number">09</div>
+    </section>
+
+</div>
+
+</body>
+</html>
