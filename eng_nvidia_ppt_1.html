@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA AI Infrastructure: Architecture Audit & Ring Causality Analysis</title>
+    <style>
+        :root {
+            --bg-main: #0a0a0a;
+            --bg-card: #121212;
+            --text-main: #e5e5e5;
+            --text-muted: #a3a3a3;
+            --accent-green: #76b900; 
+            --accent-cyan: #06b6d4;
+            --accent-red: #ef4444;
+            --border-color: #262626;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+            font-size: 18px; /* Increased Base Font */
+        }
+
+        .deck {
+            height: 100vh;
+            width: 100vw;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        .deck::-webkit-scrollbar { display: none; }
+
+        .slide {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-image: 
+                linear-gradient(rgba(118, 185, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(118, 185, 0, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            box-sizing: border-box;
+            padding: 50px;
+        }
+
+        .slide::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+            opacity: 0.8;
+        }
+
+        .slide-content {
+            width: 100%;
+            max-width: 1200px;
+            background: rgba(18, 18, 18, 0.9);
+            padding: 50px 60px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(12px);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .slide-content::-webkit-scrollbar { width: 10px; }
+        .slide-content::-webkit-scrollbar-thumb { background: #404040; border-radius: 5px; }
+
+        h1 {
+            font-size: 42px;
+            margin: 0 0 15px 0;
+            font-weight: 800;
+            letter-spacing: -1px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 22px;
+            color: var(--accent-cyan);
+            letter-spacing: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            font-size: 32px;
+            color: var(--text-main);
+            border-left: 6px solid var(--accent-green);
+            padding-left: 20px;
+            margin-top: 0;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        h3 {
+            font-size: 24px;
+            color: var(--accent-cyan);
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        p, li {
+            font-size: 20px;
+            line-height: 1.7;
+            color: #d4d4d4;
+            margin-bottom: 18px;
+            text-align: justify;
+        }
+
+        ul {
+            padding-left: 35px;
+            list-style-type: none;
+        }
+
+        li { position: relative; }
+        li::before {
+            content: "//";
+            position: absolute;
+            left: -35px;
+            color: var(--accent-green);
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        strong { color: #ffffff; }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            font-size: 16px;
+            font-family: monospace;
+            font-weight: bold;
+            border-radius: 6px;
+            margin-left: 18px;
+            vertical-align: middle;
+        }
+        .badge-green { background: rgba(118, 185, 0, 0.15); color: var(--accent-green); border: 1px solid rgba(118, 185, 0, 0.3); }
+        .badge-cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .badge-red { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 18px;
+            background: rgba(38, 38, 38, 0.3);
+            border: 1px solid var(--border-color);
+        }
+        th, td {
+            padding: 20px 24px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #171717;
+            color: var(--text-main);
+            font-size: 18px;
+        }
+
+        .risk-card {
+            background: rgba(239, 68, 68, 0.04);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 5px solid var(--accent-red);
+        }
+        .risk-card h4 {
+            margin: 0 0 12px 0;
+            color: var(--accent-red);
+            font-size: 20px;
+            font-family: monospace;
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 25px;
+            right: 40px;
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        .instruction {
+            position: absolute;
+            bottom: 25px;
+            left: 40px;
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 16px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+<div class="deck">
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="slide-content" style="text-align: center; border: none; background: transparent; box-shadow: none;">
+            <h1>NVIDIA AI Hardware Infrastructure</h1>
+            <div class="subtitle">Systemic Effects & NVL2 Scale-Out Risk Matrix</div>
+            <p style="text-align: center; margin-top: 50px; color: var(--text-muted); font-family: monospace;">
+                CONFIDENTIAL ARCHITECTURE AUDIT // ZERO-INFERENCE BASELINE
+            </p>
+        </div>
+        <div class="instruction">Scroll Down &darr;</div>
+        <div class="slide-number">01</div>
+    </section>
+
+    <!-- Slide 2: H200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>1. NVIDIA H200 <span class="badge badge-green">Hopper</span></h2>
+            <ul>
+                <li><strong>Physical Form:</strong> Shipped Q2 2024. Available in SXM5 (baseboard module) and NVL (PCIe Gen5 dual-slot).</li>
+                <li><strong>Compute Specs:</strong> 141 GB HBM3e unified memory, 4.8 TB/s bandwidth. FP8 compute at 3,958 TFLOPS.</li>
+                <li><strong>Systemic Effect:</strong> Core compute mirrors H100. Intent is to physically alleviate the memory wall during LLM inference via 1.4x bandwidth and doubled capacity.</li>
+                <li><strong>Infrastructure Req:</strong> Peak TDP at 700W (SXM5) / 600W (NVL). Cooling parameters strictly dictated by server chassis thermodynamics.</li>
+            </ul>
+        </div>
+        <div class="slide-number">02</div>
+    </section>
+
+    <!-- Slide 3: B200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>2. NVIDIA B200 <span class="badge badge-green">Blackwell</span></h2>
+            <ul>
+                <li><strong>Physical Form:</strong> Dual-die high-density packaging. Supplied primarily via HGX 8-GPU baseboard configurations.</li>
+                <li><strong>Compute Specs:</strong> 192 GB HBM3e, bandwidth scaling to 8.0 TB/s. Native FP4 support yielding up to 9,000 TFLOPS.</li>
+                <li><strong>Systemic Effect:</strong> Designed to aggressively compress inference unit costs for trillion-parameter models via extreme compute density (4x throughput vs. Hopper).</li>
+                <li><strong>Infrastructure Req:</strong> TDP per GPU reaches 1,000W - 1,200W. Demands facility-level Direct Liquid Cooling (DLC) in high-density cluster environments to prevent thermal throttling.</li>
+            </ul>
+        </div>
+        <div class="slide-number">03</div>
+    </section>
+
+    <!-- Slide 4: GH200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>3. NVIDIA GH200 <span class="badge badge-cyan">Grace Hopper</span></h2>
+            <ul>
+                <li><strong>Physical Form:</strong> Monolithic superchip integrating a 72-core Grace ARM CPU and Hopper GPU.</li>
+                <li><strong>Compute Specs:</strong> 900 GB/s NVLink-C2C bridge. 624 GB unified memory (144GB GPU + 480GB CPU).</li>
+                <li><strong>Systemic Effect:</strong> Structurally eliminates legacy PCIe bus latency. Provides definitive architectural defense for memory-bound massive graph databases and Retrieval-Augmented Generation (RAG).</li>
+                <li><strong>Infrastructure Req:</strong> Module peak TDP ~1,000W. Liquid cooling is the engineering standard for sustained loads; specific edge implementations validate forced air.</li>
+            </ul>
+        </div>
+        <div class="slide-number">04</div>
+    </section>
+
+    <!-- Slide 5: GB200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>4. NVIDIA GB200 <span class="badge badge-cyan">Grace Blackwell</span></h2>
+            <ul>
+                <li><strong>Physical Form:</strong> Heterogeneous module pairing 1x Grace CPU with 2x B200 GPUs. Branches into NVL72 (rack-scale topology) and NVL2 (standard enterprise node).</li>
+                <li><strong>Compute Specs:</strong> Up to 864 GB unified memory per module. Generates up to 18,000 TFLOPS (FP4) of dense parallel throughput.</li>
+                <li><strong>Systemic Effect:</strong> Eradicates the traditional single-server paradigm, re-engineering the entire Rack as the base compute unit.</li>
+                <li><strong>Infrastructure Req:</strong> Module TDP ~2,700W. NVL72 racks hit 130kW, <strong>mandating DLC</strong>. NVL2 shifts power curves to compromise with standard high-airflow chassis.</li>
+            </ul>
+        </div>
+        <div class="slide-number">05</div>
+    </section>
+
+    <!-- Slide 6: Comparison -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>5. Core Specification Matrix</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>H200</th>
+                        <th>B200</th>
+                        <th>GH200</th>
+                        <th>GB200</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Compute Mix</strong></td>
+                        <td>Hopper (GPU Only)</td>
+                        <td>Blackwell (GPU Only)</td>
+                        <td>Grace CPU + Hopper</td>
+                        <td>Grace CPU + 2x Blackwell</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Unified Memory</strong></td>
+                        <td>141 GB HBM3e</td>
+                        <td>192 GB HBM3e</td>
+                        <td>Up to 624 GB</td>
+                        <td>Up to 864 GB</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Bandwidth</strong></td>
+                        <td>4.8 TB/s</td>
+                        <td>8.0 TB/s</td>
+                        <td>4.8 TB/s (GPU block)</td>
+                        <td>8.0 TB/s (Per GPU)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Peak TDP</strong></td>
+                        <td>~700W</td>
+                        <td>1,000W - 1,200W</td>
+                        <td>~1,000W</td>
+                        <td>~2,700W per module</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cooling Support</strong></td>
+                        <td>Air / Liquid</td>
+                        <td>Airflow / Liquid</td>
+                        <td>Air / Liquid</td>
+                        <td>Liquid (NVL72) / Air (NVL2)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="slide-number">06</div>
+    </section>
+
+    <!-- Slide 7: Servers -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>6. Low-Density Nodes (&le; 4 Accelerators)</h2>
+            <p>Verified OEM engineering specs confirm the following configurations supporting standard infrastructure:</p>
+            
+            <h3>■ HPE (Hewlett Packard Enterprise)</h3>
+            <ul>
+                <li><strong>ProLiant DL384 Gen12:</strong> 2U chassis. Actively supports dual GH200 NVL2. OEM roadmap verifies seamless integration for <strong>Dual NVIDIA GB200 NVL2</strong> within the same physical boundary.</li>
+                <li><strong>ProLiant DL380a Gen12:</strong> Validated for up to 4x H200 NVL (PCIe).</li>
+            </ul>
+
+            <h3>■ Dell Technologies</h3>
+            <ul>
+                <li><strong>PowerEdge R760xa:</strong> 2U chassis. Validated for up to 4x H200 NVL (PCIe). <em>(Dell bypassed standalone GH200 architecture. The upcoming R770 is limited by PCIe lane topology to 2x dual-slot GPUs, effectively halving compute density per node).</em></li>
+            </ul>
+
+            <h3>■ Supermicro</h3>
+            <ul>
+                <li><strong>ARS-111GL-NHR:</strong> 1U edge node housing a single GH200 superchip.</li>
+                <li><strong>SYS-421GE-TNRT:</strong> 4U dual-socket Xeon supporting up to 4x H200 NVL (PCIe).</li>
+            </ul>
+        </div>
+        <div class="slide-number">07</div>
+    </section>
+
+    <!-- Slide 8: Risks Part 1 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>7. Node-to-Rack Scalability: Ring Causality Analysis (1/2)</h2>
+            <p>If expansion blueprints strictly exclude NVL72 cabinets, capping at 1 to 4 GB200 NVL2 nodes, the physical infrastructure conflicts undergo a structural shift.</p>
+            
+            <div class="risk-card" style="border-left-color: var(--accent-green);">
+                <h4 style="color: var(--accent-green);">[+] Driving Force: Infrastructure Survival</h4>
+                <p><strong>Intent:</strong> Bypass massive CAPEX associated with DLC and CDUs.<br>
+                <strong>Systemic Effect:</strong> A 4-node NVL2 cluster draws roughly 12kW to 16kW. This operates entirely within the thermodynamic limits of legacy hot/cold aisle datacenters. The initial server investment survives intact; facility infrastructure crisis is averted.</p>
+            </div>
+
+            <div class="risk-card">
+                <h4>[-] Hindering Force: NVLink Domain Disconnect</h4>
+                <p><strong>Intent:</strong> Utilize network switches (InfiniBand/Ethernet) to bridge 4 NVL2 drawers, simulating super-cluster compute.<br>
+                <strong>Systemic Effect (Physical Limit):</strong> NVLink (8.0 TB/s) is physically trapped inside the NVL2 chassis. Cross-node data must exit the NVLink domain, step down to PCIe, and route through ConnectX NICs. Utilizing a 400G NDR switch collapses bandwidth to ~50 GB/s. This 160x bandwidth cliff forms an absolute barrier against parallel synchronization.</p>
+            </div>
+        </div>
+        <div class="slide-number">08</div>
+    </section>
+
+    <!-- Slide 9: Risks Part 2 & Conclusion -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>7. Node-to-Rack Scalability: Ring Causality Analysis (2/2)</h2>
+            
+            <div class="risk-card">
+                <h4>[!] Gray Zone Audit: Workload Pivot</h4>
+                <p>Due to the interconnect bandwidth cliff, workloads must undergo strict evaluation, prohibiting linear attribution assumptions:<br>
+                <strong>Prohibited:</strong> Treating 4 NVL2 units as a "unified 16-GPU supercomputer" to train foundational models. Heavy Tensor Parallelism will hit the NIC limit, causing massive MFU (Model Flops Utilization) collapse.<br>
+                <strong>Compromise:</strong> Software workloads must be physically partitioned. Clusters should pivot to: (1) Distributed Inference (sharding weights for throughput), (2) RAG Vector Databases parsing enterprise documents, or (3) Isolated fine-tuning tasks confined within a single node's 4 GPUs.</p>
+            </div>
+
+            <div style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.2); padding: 30px; border-radius: 8px; margin-top: 35px;">
+                <h3 style="margin-top: 0; color: var(--accent-cyan); font-family: monospace;">Objective Investment Conclusion</h3>
+                <p style="margin-bottom: 0;">Scaling from 1 to 4 NVL2 units is financially and structurally sound regarding environmental engineering. However, architecturally, you are procuring "4 isolated compute islands connected by a highway," not a "unified supercomputer." As long as software workflows are parallelized to respect this physical boundary, this expansion pathway is absolutely valid.</p>
+            </div>
+        </div>
+        <div class="slide-number">09</div>
+    </section>
+
+</div>
+</body>
+</html>

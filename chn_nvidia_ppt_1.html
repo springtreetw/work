@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA AI 基礎設施：架構審核與環形因果分析</title>
+    <style>
+        :root {
+            --bg-main: #0a0a0a;
+            --bg-card: #121212;
+            --text-main: #e5e5e5;
+            --text-muted: #a3a3a3;
+            --accent-green: #76b900; 
+            --accent-cyan: #06b6d4;
+            --accent-red: #ef4444;
+            --border-color: #262626;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Inter', 'Noto Sans TC', -apple-system, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+            font-size: 18px; /* 字體加大 */
+        }
+
+        .deck {
+            height: 100vh;
+            width: 100vw;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        .deck::-webkit-scrollbar { display: none; }
+
+        .slide {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-image: 
+                linear-gradient(rgba(118, 185, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(118, 185, 0, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            box-sizing: border-box;
+            padding: 50px;
+        }
+
+        .slide::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+            opacity: 0.8;
+        }
+
+        .slide-content {
+            width: 100%;
+            max-width: 1200px;
+            background: rgba(18, 18, 18, 0.9);
+            padding: 50px 60px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(12px);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .slide-content::-webkit-scrollbar { width: 10px; }
+        .slide-content::-webkit-scrollbar-thumb { background: #404040; border-radius: 5px; }
+
+        h1 {
+            font-size: 42px;
+            margin: 0 0 15px 0;
+            font-weight: 800;
+            letter-spacing: -1px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 22px;
+            color: var(--accent-cyan);
+            letter-spacing: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            font-size: 32px;
+            color: var(--text-main);
+            border-left: 6px solid var(--accent-green);
+            padding-left: 20px;
+            margin-top: 0;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+        }
+
+        h3 {
+            font-size: 24px;
+            color: var(--accent-cyan);
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+
+        p, li {
+            font-size: 20px;
+            line-height: 1.7;
+            color: #d4d4d4;
+            margin-bottom: 18px;
+            text-align: justify;
+        }
+
+        ul {
+            padding-left: 35px;
+            list-style-type: none;
+        }
+
+        li { position: relative; }
+        li::before {
+            content: "//";
+            position: absolute;
+            left: -35px;
+            color: var(--accent-green);
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        strong { color: #ffffff; }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            font-size: 16px;
+            font-family: monospace;
+            font-weight: bold;
+            border-radius: 6px;
+            margin-left: 18px;
+            vertical-align: middle;
+        }
+        .badge-green { background: rgba(118, 185, 0, 0.15); color: var(--accent-green); border: 1px solid rgba(118, 185, 0, 0.3); }
+        .badge-cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .badge-red { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 18px;
+            background: rgba(38, 38, 38, 0.3);
+            border: 1px solid var(--border-color);
+        }
+        th, td {
+            padding: 20px 24px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #171717;
+            color: var(--text-main);
+            font-size: 18px;
+        }
+
+        .risk-card {
+            background: rgba(239, 68, 68, 0.04);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            border-left: 5px solid var(--accent-red);
+        }
+        .risk-card h4 {
+            margin: 0 0 12px 0;
+            color: var(--accent-red);
+            font-size: 20px;
+            font-family: monospace;
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 25px;
+            right: 40px;
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 18px;
+            opacity: 0.7;
+        }
+        .instruction {
+            position: absolute;
+            bottom: 25px;
+            left: 40px;
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 16px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+<div class="deck">
+
+    <!-- Slide 1: Title -->
+    <section class="slide">
+        <div class="slide-content" style="text-align: center; border: none; background: transparent; box-shadow: none;">
+            <h1>NVIDIA AI 基礎設施架構</h1>
+            <div class="subtitle">系統效應評估與 NVL2 橫向擴充風險矩陣</div>
+            <p style="text-align: center; margin-top: 50px; color: var(--text-muted); font-family: monospace;">
+                架構審核機密文件 // 零假設基準分析
+            </p>
+        </div>
+        <div class="instruction">向下捲動 &darr;</div>
+        <div class="slide-number">01</div>
+    </section>
+
+    <!-- Slide 2: H200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>1. NVIDIA H200 <span class="badge badge-green">Hopper</span></h2>
+            <ul>
+                <li><strong>物理形態：</strong> 2024 年 Q2 出貨。分為 SXM5 (主機板模組) 與 NVL (PCIe Gen5 雙插槽) 兩種工程外觀。</li>
+                <li><strong>運算規格：</strong> 141 GB HBM3e 統一記憶體，頻寬 4.8 TB/s。FP8 算力 3,958 TFLOPS。</li>
+                <li><strong>系統效應：</strong> 核心算力與 H100 持平，主要意圖為透過 1.4 倍頻寬與容量擴充，從物理層面直接緩解 LLM 推論時面臨的記憶體牆 (Memory Wall)。</li>
+                <li><strong>基礎設施要求：</strong> TDP 峰值 700W (SXM5) / 600W (NVL)。散熱配置完全取決於伺服器機箱之熱流力學設計。</li>
+            </ul>
+        </div>
+        <div class="slide-number">02</div>
+    </section>
+
+    <!-- Slide 3: B200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>2. NVIDIA B200 <span class="badge badge-green">Blackwell</span></h2>
+            <ul>
+                <li><strong>物理形態：</strong> 雙裸晶 (Dual-Die) 高密度封裝，主要以 HGX 8-GPU 基板模組形式向基礎設施市場供貨。</li>
+                <li><strong>運算規格：</strong> 192 GB HBM3e，頻寬暴增至 8.0 TB/s。原生支援 FP4，理論算力高達 9,000 TFLOPS。</li>
+                <li><strong>系統效應：</strong> 意圖透過極端算力堆疊壓低兆級模型單位推論成本。在硬體層面帶來 4 倍於前代的吞吐量。</li>
+                <li><strong>基礎設施要求：</strong> 單一 GPU 功耗達 1,000W ~ 1,200W。高密度叢集環境中，強烈依賴設施級別的直接液冷 (DLC) 系統以維持時脈穩定。</li>
+            </ul>
+        </div>
+        <div class="slide-number">03</div>
+    </section>
+
+    <!-- Slide 4: GH200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>3. NVIDIA GH200 <span class="badge badge-cyan">Grace Hopper</span></h2>
+            <ul>
+                <li><strong>物理形態：</strong> 一體化單晶片基板，整合 72 核心 Grace ARM CPU 與 Hopper GPU。</li>
+                <li><strong>運算規格：</strong> 內部透過 900 GB/s NVLink-C2C 橋接。總統一記憶體達 624 GB (GPU 144GB + CPU 480GB)。</li>
+                <li><strong>系統效應：</strong> 從硬體結構上徹底消除傳統處理器與加速器間的 PCIe 延遲。對超大型圖形資料庫、長文本檢索增強生成 (RAG) 具備結構性防禦優勢。</li>
+                <li><strong>基礎設施要求：</strong> 模組總功耗約 1,000W。持續高負載運作下液冷為核心規範，特定邊緣單機可配置高流速氣冷。</li>
+            </ul>
+        </div>
+        <div class="slide-number">04</div>
+    </section>
+
+    <!-- Slide 5: GB200 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>4. NVIDIA GB200 <span class="badge badge-cyan">Grace Blackwell</span></h2>
+            <ul>
+                <li><strong>物理形態：</strong> 1 顆 Grace CPU 搭配 2 顆 B200 GPU 之異質運算模組。提供 NVL72 (超大型機櫃拓撲) 與 NVL2 (標準企業機房單機相容) 兩種分支。</li>
+                <li><strong>運算規格：</strong> 單模組 864 GB 統一快取記憶體，單一模組提供高達 18,000 TFLOPS (FP4) 暴力運算密度。</li>
+                <li><strong>系統效應：</strong> 產品定位徹底脫離傳統「單機伺服器」範疇。意圖將機櫃 (Rack) 重塑為單一運算節點。</li>
+                <li><strong>基礎設施要求：</strong> 單模組 TDP 約 2,700W。NVL72 機櫃耗電達 130kW，<strong>強制綁定直接液冷 (DLC)</strong>；NVL2 則透過功耗降級，妥協於傳統氣冷機箱。</li>
+            </ul>
+        </div>
+        <div class="slide-number">05</div>
+    </section>
+
+    <!-- Slide 6: Comparison -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>5. 核心規格參數矩陣</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>工程指標</th>
+                        <th>H200</th>
+                        <th>B200</th>
+                        <th>GH200</th>
+                        <th>GB200</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>運算核心配置</strong></td>
+                        <td>Hopper (僅 GPU)</td>
+                        <td>Blackwell (僅 GPU)</td>
+                        <td>Grace CPU + Hopper</td>
+                        <td>Grace CPU + 2x Blackwell</td>
+                    </tr>
+                    <tr>
+                        <td><strong>統一記憶體容量</strong></td>
+                        <td>141 GB HBM3e</td>
+                        <td>192 GB HBM3e</td>
+                        <td>最高 624 GB</td>
+                        <td>最高 864 GB</td>
+                    </tr>
+                    <tr>
+                        <td><strong>記憶體總頻寬</strong></td>
+                        <td>4.8 TB/s</td>
+                        <td>8.0 TB/s</td>
+                        <td>4.8 TB/s (GPU 端)</td>
+                        <td>8.0 TB/s (單 GPU)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>TDP 物理極限</strong></td>
+                        <td>~700W</td>
+                        <td>1,000W - 1,200W</td>
+                        <td>~1,000W</td>
+                        <td>~2,700W (單一模組)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>散熱設施相容性</strong></td>
+                        <td>氣冷 / 液冷</td>
+                        <td>強風量氣冷 / 液冷</td>
+                        <td>氣冷 / 液冷</td>
+                        <td>強制液冷(NVL72) / 氣冷(NVL2)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="slide-number">06</div>
+    </section>
+
+    <!-- Slide 7: Servers -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>6. 小規模節點硬體選項 (&le; 4 顆加速器)</h2>
+            <p>經核實 OEM 原廠工程規格，目前支援 4 顆(含)以下之氣冷單機配置如下：</p>
+            
+            <h3>■ HPE (Hewlett Packard Enterprise)</h3>
+            <ul>
+                <li><strong>ProLiant DL384 Gen12：</strong> 2U 機箱。現支援雙 GH200 NVL2。原廠路線圖確認該物理空間將無縫支援 <strong>Dual NVIDIA GB200 NVL2</strong>。</li>
+                <li><strong>ProLiant DL380a Gen12：</strong> 支援至多 4 張 H200 NVL (PCIe)。</li>
+            </ul>
+
+            <h3>■ Dell Technologies</h3>
+            <ul>
+                <li><strong>PowerEdge R760xa：</strong> 2U 機型，支援至多 4 張 H200 NVL (PCIe)。<em>(因應既有 x86 客戶群並避免架構衝突，Dell 未開發 GH200 單機產品。而新款 R770 因機箱限制僅能支援 2 顆高階 GPU，算力密度將折半。)</em></li>
+            </ul>
+
+            <h3>■ Supermicro</h3>
+            <ul>
+                <li><strong>ARS-111GL-NHR：</strong> 1U 單機，搭載單顆 GH200，定位於邊緣推論節點。</li>
+                <li><strong>SYS-421GE-TNRT：</strong> 4U 企業級氣冷伺服器，支援 4 張 H200 NVL (PCIe)。</li>
+            </ul>
+        </div>
+        <div class="slide-number">07</div>
+    </section>
+
+    <!-- Slide 8: Risks Part 1 -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>7. 擴充風險與系統效應分析：NVL2 橫向擴充之環形因果 (1/2)</h2>
+            <p>擴充藍圖若限縮於「單台擴充至最多 4 台 GB200 NVL2 (排除 NVL72 機櫃)」，基礎設施的物理衝突將發生結構性轉移。</p>
+            
+            <div class="risk-card">
+                <h4>[+] 推動力場：電力與散熱設施之存活</h4>
+                <p><strong>意圖：</strong> 避開導入直接液冷 (DLC) 與 CDU (冷卻液分配單元) 的高昂資本支出。 <br>
+                <strong>系統效應：</strong> 4 台 GB200 NVL2 節點的總機櫃功耗約為 12kW 至 16kW。此數據並未突破傳統氣冷冷熱通道機房的物理極限。初期採購的單機能被安全地保留，環境基礎設施危機解除。</p>
+            </div>
+
+            <div class="risk-card">
+                <h4>[-] 阻礙力場：NVLink 網域斷層與通訊牆</h4>
+                <p><strong>意圖：</strong> 透過網路交換器串聯 4 台 NVL2，模擬超級叢集的運算力。 <br>
+                <strong>系統效應 (物理限制)：</strong> NVL2 架構的 NVLink 僅限於單一機箱內部 (8.0 TB/s)。當資料跨越節點，必須脫離 NVLink，降速至 PCIe 並透過 ConnectX 網卡由 InfiniBand/Ethernet 輸出。若採用 400G NDR 交換器，跨節點傳輸率將驟降至 50 GB/s。此 160 倍的頻寬落差，將成為阻礙平行運算的物理死穴。</p>
+            </div>
+        </div>
+        <div class="slide-number">08</div>
+    </section>
+
+    <!-- Slide 9: Risks Part 2 & Conclusion -->
+    <section class="slide">
+        <div class="slide-content">
+            <h2>7. 擴充風險與系統效應分析：NVL2 橫向擴充之環形因果 (2/2)</h2>
+            
+            <div class="risk-card">
+                <h4>[!] 灰色地帶審核：工作負載的強制轉型</h4>
+                <p>基於上述跨節點通訊斷層，必須實施零假設之任務審查，禁止線性歸因：<br>
+                <strong>禁止：</strong> 將 4 台 NVL2 視為「擁有 16 顆 GPU 的單一機器」來訓練兆級參數基礎模型。大量的跨節點張量同步 (Tensor Parallelism) 需求將撞擊網卡上限，導致 GPU 算力利用率 (MFU) 嚴重崩潰。<br>
+                <strong>妥協：</strong> 軟體任務必須被物理切割。叢集應轉型為：(1) 分散式推論 (切割權重以提高吞吐) (2) 處理巨量文件的 RAG 向量資料庫 (3) 限定在單機 4 顆 GPU 內的獨立微調任務 (Fine-tuning)。</p>
+            </div>
+
+            <div style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.2); padding: 30px; border-radius: 8px; margin-top: 35px;">
+                <h3 style="margin-top: 0; color: var(--accent-cyan); font-family: monospace;">客觀投資定論</h3>
+                <p style="margin-bottom: 0;">將 1 台 NVL2 擴充至 4 台，在「環境工程」上是極度安全且務實的。但在「算力架構」上，貴司買到的是「4 個由高速公路串聯的運算孤島」，而非「1 個融合的微型超級電腦」。只要軟體開發部門能接受平行拆解工作負載，此擴充路徑即為絕對成立之投資方案。</p>
+            </div>
+        </div>
+        <div class="slide-number">09</div>
+    </section>
+
+</div>
+</body>
+</html>
