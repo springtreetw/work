@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Server Evaluation & Selection Report</title>
+<style>
+    :root {
+        --primary-color: #0f172a;
+        --accent-color: #2563eb;
+        --border-color: #cbd5e1;
+        --bg-color: #e2e8f0;
+        --slide-bg: #ffffff;
+        --text-color: #334155;
+    }
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 40px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+    }
+    .slide {
+        width: 90%;
+        max-width: 960px;
+        background: var(--slide-bg);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        border-radius: 6px;
+        border-left: 6px solid var(--primary-color);
+        padding: 40px 50px;
+        box-sizing: border-box;
+    }
+    h1 {
+        color: var(--primary-color);
+        font-size: 26px;
+        margin-top: 0;
+        border-bottom: 2px solid var(--bg-color);
+        padding-bottom: 12px;
+    }
+    h2 {
+        color: var(--accent-color);
+        font-size: 18px;
+        margin-top: 25px;
+        margin-bottom: 12px;
+    }
+    p, li {
+        line-height: 1.6;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    ul {
+        margin-top: 5px;
+        padding-left: 24px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 15px;
+    }
+    th, td {
+        border: 1px solid var(--border-color);
+        padding: 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #f8fafc;
+        color: var(--primary-color);
+        font-weight: 600;
+        width: 25%;
+    }
+    .highlight {
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+</style>
+</head>
+<body>
+
+    <div class="slide">
+        <h1>Three Core Elements of AI Computing Power</h1>
+        <ul>
+            <li><span class="highlight">Computing Speed (FLOPS):</span> Determines how fast matrix calculations run. For Large Language Models (LLMs), we focus on FP16/BF16 or FP8 performance.</li>
+            <li><span class="highlight">Memory Capacity (VRAM):</span> Determines how large a model can be loaded and the size of the Context Window. An 80B model (FP16) requires around 160GB just for its weights.</li>
+            <li><span class="highlight">Memory Bandwidth:</span> Determines how fast data can be accessed. LLM inference is highly "memory-bound," meaning bandwidth directly controls the generation speed (Tokens/second).</li>
+        </ul>
+        <p>※ The system's maximum performance is always limited by its weakest link (e.g., PCIe speed bottlenecks or delays caused by insufficient memory).</p>
+    </div>
+
+    <div class="slide">
+        <h1>Current GPU Generations (For LLM Development)</h1>
+        <table>
+            <tr>
+                <th>Mainstream LLM GPU<br>(NVIDIA H200)</th>
+                <td>
+                    <strong>Memory / Bandwidth:</strong> 144GB / 4.8 TB/s<br>
+                    <strong>Peak Performance:</strong> 3958 TFLOPS (FP8)<br>
+                    Enterprise standard. Offers the best compatibility and complete CUDA software support. Supports PCIe/SXM.
+                </td>
+            </tr>
+            <tr>
+                <th>Top Chinese GPU<br>(Ascend 910C)</th>
+                <td>
+                    <strong>Memory / Bandwidth:</strong> 128GB / 3.2 TB/s<br>
+                    <strong>Peak Performance:</strong> ~800 TFLOPS (FP16/BF16)<br>
+                    Strong hardware, but requires moving existing software to the CANN ecosystem, causing extra conversion time and costs.
+                </td>
+            </tr>
+            <tr>
+                <th>Top Consumer GPU<br>(RTX 5090)</th>
+                <td>
+                    <strong>Memory / Bandwidth:</strong> 32GB / 1.79 TB/s<br>
+                    <strong>Peak Performance:</strong> ~1676 TFLOPS (FP8 Sparse)<br>
+                    Lacks enterprise reliability (RAS). Not enough memory to load an 80B model. Frequent memory swapping will cause massive delays.
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="slide">
+        <h1>NVIDIA H200 Architecture</h1>
+        <ul>
+            <li><strong>Release Timeline:</strong> Announced 2023 / Mass production 2024.</li>
+            <li><strong>Form Factor:</strong> SXM5 module or PCIe card.</li>
+            <li><strong>Hardware Specs:</strong> 144GB HBM3e (141GB usable space) / 4.8 TB/s bandwidth.</li>
+            <li><strong>Infrastructure Needs:</strong> 600W-700W power usage per card. Supports standard air cooling.</li>
+            <li><strong>Software Ecosystem:</strong> Pairs with traditional x86 CPUs. Fully compatible with current OS and CUDA environments.</li>
+            <li><strong>System Limits:</strong> General-purpose design. Data sharing between cards is limited by the PCIe Gen5 bottleneck (128 GB/s bidirectional).</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>NVIDIA GH200 (Grace Hopper)</h1>
+        <ul>
+            <li><strong>Release Timeline:</strong> Announced 2023.</li>
+            <li><strong>Form Factor:</strong> Superchip (CPU + GPU combined in one module).</li>
+            <li><strong>Hardware Specs (144GB version):</strong> <strong>624GB Unified Memory</strong> (144GB HBM3e + 480GB LPDDR5X) / 4.0 TB/s GPU bandwidth.</li>
+            <li><strong>Infrastructure Needs:</strong> 450W-1000W power usage. Supports air or liquid cooling.</li>
+            <li><strong>Software Ecosystem:</strong> Powered by ARM architecture (Grace CPU) at the base.</li>
+            <li><strong>System Advantages:</strong> Internal NVLink-C2C (900 GB/s) removes the PCIe bottleneck. Specifically designed for extreme memory needs.</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>NVIDIA GB200 (Grace Blackwell)</h1>
+        <ul>
+            <li><strong>Release Timeline:</strong> Announced 2024.</li>
+            <li><strong>Form Factor:</strong> 1 Grace CPU + 2 Blackwell B200 GPUs combined.</li>
+            <li><strong>Hardware Specs:</strong> 384GB HBM3e / 16 TB/s bandwidth / Supports FP4 precision.</li>
+            <li><strong>Infrastructure Needs:</strong> Massive 2700W power usage. <strong>Strictly requires liquid cooling.</strong></li>
+            <li><strong>System Advantages:</strong> The absolute top tier for trillion-parameter models. Primarily designed for rack-scale deployments, not single servers.</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>Communication Technology: NVLink & NVSwitch</h1>
+        <ul>
+            <li><strong>NVLink (Direct Connection):</strong><br>
+                Replaces PCIe for high-speed connections. Internal chip speeds (like GH200's NVLink-C2C) reach 900 GB/s. Connection between GPUs is much faster than standard PCIe Gen5, significantly reducing delays.</li>
+            <li><strong>NVSwitch (Network Switch):</strong><br>
+                A network switch for GPUs. It connects multiple servers or dozens of GPUs within a rack, allowing them to communicate freely without traffic jams (All-to-All communication).</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>Specs & Feasibility Comparison (For 2U~4U Setup)</h1>
+        <table>
+            <tr>
+                <th>Specs</th>
+                <th>H200</th>
+                <th>GH200 (144GB Version)</th>
+                <th>GB200</th>
+            </tr>
+            <tr>
+                <td>Single Node Memory</td>
+                <td>141GB (Usable)</td>
+                <td>624GB (Unified Memory)</td>
+                <td>384GB</td>
+            </tr>
+            <tr>
+                <td>High-Speed Connection</td>
+                <td>None (Relies on PCIe) or External Bridge</td>
+                <td>NVLink-C2C</td>
+                <td>NVLink-C2C + 5th Gen NVLink</td>
+            </tr>
+            <tr>
+                <td>Cooling Needs</td>
+                <td>Standard Air Cooling</td>
+                <td>Air / Liquid Cooling</td>
+                <td>Liquid Cooling Only</td>
+            </tr>
+            <tr>
+                <td><strong>Setup Feasibility</strong></td>
+                <td><strong>High</strong></td>
+                <td><strong>High</strong></td>
+                <td><strong>Low (No single-server air-cooling options)</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="slide">
+        <h1>Available AI Servers on the Market (2U~4U)</h1>
+        <ul>
+            <li><strong>HPE DL384 Gen12 (2U):</strong> Supports Dual GH200 (NVL2). Provides double the compute nodes and memory pool under standard air cooling.</li>
+            <li><strong>HPE DL380a Gen12 (4U):</strong> Dual x86 CPUs. Fits up to 8 double-wide PCIe GPUs. Excellent for expansion.</li>
+            <li><strong>DELL R760xa (2U):</strong> Dual x86 CPUs. Fits up to 4 double-wide PCIe GPUs.</li>
+            <li><strong>Supermicro ARS-111GL-NHR (1U):</strong> Single GH200. Extreme cooling pressure due to the small size.</li>
+            <li><strong>Supermicro SYS-421GE-TNRT (4U):</strong> Dual x86 CPUs. Fits up to 10 double-wide GPUs.</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>Final Recommendation: HPE DL384 Gen12 + Dual GH200 NVL2</h1>
+        
+        <h2>1. Task Isolation (Zero Compiling Burden)</h2>
+        <p>The server will only handle LLM inference. Firmware compiling and testing Agents will run on other hosts. Because of this, switching to the ARM architecture (Grace CPU) will not cause any software compatibility issues or extra compiling costs.</p>
+
+        <h2>2. Ruling out GB200</h2>
+        <p>GB200 requires rack-level liquid cooling and huge power capacity. There are currently no single-server, air-cooled options available within a 4U space limit.</p>
+
+        <h2>3. Memory & Bandwidth Advantage (GH200 vs H200)</h2>
+        <p>An 80B model needs about 160GB of VRAM. A single H200 (141GB) cannot load it alone. If we use a multi-card x86 server to combine memory, data transfer will be slowed down by the PCIe bottleneck.</p>
+
+        <h2>4. Final Benefits</h2>
+        <p>Dual GH200 NVL2 provides a massive memory pool of 288GB HBM3e + 960GB LPDDR5X. By using NVLink, it completely avoids PCIe delays. Within an air-cooled server setup, this choice maximizes inference speed and Context Window size.</p>
+    </div>
+
+</body>
+</html>

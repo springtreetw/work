@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Server 評估與選型報告</title>
+<style>
+    :root {
+        --primary-color: #0f172a;
+        --accent-color: #2563eb;
+        --border-color: #cbd5e1;
+        --bg-color: #e2e8f0;
+        --slide-bg: #ffffff;
+        --text-color: #334155;
+    }
+    body {
+        font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 40px 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+    }
+    .slide {
+        width: 90%;
+        max-width: 960px;
+        background: var(--slide-bg);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        border-radius: 6px;
+        border-left: 6px solid var(--primary-color);
+        padding: 40px 50px;
+        box-sizing: border-box;
+    }
+    h1 {
+        color: var(--primary-color);
+        font-size: 26px;
+        margin-top: 0;
+        border-bottom: 2px solid var(--bg-color);
+        padding-bottom: 12px;
+    }
+    h2 {
+        color: var(--accent-color);
+        font-size: 18px;
+        margin-top: 25px;
+        margin-bottom: 12px;
+    }
+    p, li {
+        line-height: 1.6;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    ul {
+        margin-top: 5px;
+        padding-left: 24px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 15px;
+    }
+    th, td {
+        border: 1px solid var(--border-color);
+        padding: 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #f8fafc;
+        color: var(--primary-color);
+        font-weight: 600;
+        width: 25%;
+    }
+    .highlight {
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+</style>
+</head>
+<body>
+
+    <div class="slide">
+        <h1>AI 算力核心三要素</h1>
+        <ul>
+            <li><span class="highlight">浮點運算力 (FLOPS)：</span>決定矩陣計算速度。大語言模型 (LLM) 推論主要評估 FP16/BF16 或 FP8 效能。</li>
+            <li><span class="highlight">記憶體容量 (VRAM)：</span>決定模型載入與 Context Window 大小。80B 模型 (FP16) 僅權重即需約 160GB 空間。</li>
+            <li><span class="highlight">記憶體頻寬 (Bandwidth)：</span>決定資料存取速度。LLM 推論屬「記憶體頻寬受限」，直接決定生成速率 (Tokens/s)。</li>
+        </ul>
+        <p>※ 系統效能極限取決於最弱環節 (如：PCIe 頻寬瓶頸、容量不足導致的系統記憶體交換)。</p>
+    </div>
+
+    <div class="slide">
+        <h1>GPU 世代現況評估 (針對 LLM 開發)</h1>
+        <table>
+            <tr>
+                <th>大語言模型主力<br>(NVIDIA H200)</th>
+                <td>
+                    <strong>記憶體/頻寬：</strong>144GB / 4.8 TB/s<br>
+                    <strong>峰值算力：</strong>3958 TFLOPS (FP8)<br>
+                    企業級標準。具備最高通用性與完整 CUDA 支援，支援 PCIe/SXM。
+                </td>
+            </tr>
+            <tr>
+                <th>中國自研頂規<br>(Ascend 910C)</th>
+                <td>
+                    <strong>記憶體/頻寬：</strong>128GB / 3.2 TB/s<br>
+                    <strong>峰值算力：</strong>~800 TFLOPS (FP16/BF16)<br>
+                    具備硬體算力，但軟體需遷移至 CANN 生態，衍生額外轉換成本。
+                </td>
+            </tr>
+            <tr>
+                <th>消費級頂規<br>(RTX 5090)</th>
+                <td>
+                    <strong>記憶體/頻寬：</strong>32GB / 1.79 TB/s<br>
+                    <strong>峰值算力：</strong>~1676 TFLOPS (FP8 Sparse)<br>
+                    無企業級 RAS。容量不足以載入 80B 模型，頻繁記憶體交換會導致延遲劇增。
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="slide">
+        <h1>NVIDIA H200 架構</h1>
+        <ul>
+            <li><strong>推出時程：</strong>2023 年發布 / 2024 年量產。</li>
+            <li><strong>實體形態：</strong>SXM5 模組 或 PCIe 擴充卡。</li>
+            <li><strong>硬體規格：</strong>144GB HBM3e (系統可用 141GB) / 頻寬 4.8 TB/s。</li>
+            <li><strong>基礎設施：</strong>單卡功耗 600W-700W，支援標準氣冷。</li>
+            <li><strong>軟體生態：</strong>搭配 x86 CPU，相容現有 OS 與 CUDA 環境。</li>
+            <li><strong>系統限制：</strong>泛用型核心。跨卡資料交換受限於 PCIe Gen5 (雙向 128 GB/s) 瓶頸。</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>NVIDIA GH200 (Grace Hopper)</h1>
+        <ul>
+            <li><strong>推出時程：</strong>2023 年發布。</li>
+            <li><strong>實體形態：</strong>Superchip (CPU + GPU 整合封裝)。</li>
+            <li><strong>硬體規格 (144GB 版)：</strong><strong>624GB 統一記憶體</strong> (144GB HBM3e + 480GB LPDDR5X) / GPU 頻寬 4.0 TB/s。</li>
+            <li><strong>基礎設施：</strong>模組功耗 450W-1000W，支援氣冷或液冷。</li>
+            <li><strong>軟體生態：</strong>底層搭載 ARM 架構 (Grace CPU)。</li>
+            <li><strong>系統優勢：</strong>內部 NVLink-C2C (900 GB/s) 消除 PCIe 瓶頸，專攻超大型記憶體需求。</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>NVIDIA GB200 (Grace Blackwell)</h1>
+        <ul>
+            <li><strong>推出時程：</strong>2024 年發布。</li>
+            <li><strong>實體形態：</strong>1 顆 Grace CPU + 2 顆 Blackwell B200 GPU。</li>
+            <li><strong>硬體規格：</strong>384GB HBM3e / 頻寬 16 TB/s / 支援 FP4 精度。</li>
+            <li><strong>基礎設施：</strong>模組功耗達 2700W，<strong>強制要求液冷 (Liquid Cooling)</strong>。</li>
+            <li><strong>系統優勢：</strong>兆級模型推論頂規，以機櫃級 (Rack-Scale) 部署為主。</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>通訊拓樸：NVLink 與 NVSwitch</h1>
+        <ul>
+            <li><strong>NVLink (點對點直連)：</strong><br>
+                取代 PCIe 的高速互連。晶片內 (如 GH200 NVLink-C2C) 達 900 GB/s；跨 GPU 直連頻寬遠超 PCIe Gen5，極大化降低存取延遲。</li>
+            <li><strong>NVSwitch (交換矩陣)：</strong><br>
+                網路交換晶片。串聯多節點或機櫃內數十顆 GPU，達成全互連 (All-to-All) 無阻塞通訊。</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>核心規格與導入可行性 (2U~4U 條件)</h1>
+        <table>
+            <tr>
+                <th>指標</th>
+                <th>H200</th>
+                <th>GH200 (144GB 版)</th>
+                <th>GB200</th>
+            </tr>
+            <tr>
+                <td>單節點記憶體</td>
+                <td>141GB (可用)</td>
+                <td>624GB (統一記憶體)</td>
+                <td>384GB</td>
+            </tr>
+            <tr>
+                <td>高速互連</td>
+                <td>無 (依賴 PCIe) 或 外部 Bridge</td>
+                <td>NVLink-C2C</td>
+                <td>NVLink-C2C + 第五代 NVLink</td>
+            </tr>
+            <tr>
+                <td>散熱要求</td>
+                <td>標準氣冷</td>
+                <td>氣冷 / 液冷</td>
+                <td>強制液冷</td>
+            </tr>
+            <tr>
+                <td><strong>環境可行性</strong></td>
+                <td><strong>高</strong></td>
+                <td><strong>高</strong></td>
+                <td><strong>低 (缺乏單機氣冷方案)</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="slide">
+        <h1>市售 AI 伺服器盤點 (2U~4U)</h1>
+        <ul>
+            <li><strong>HPE DL384 Gen12 (2U)：</strong> 支援 Dual GH200 (NVL2)。在氣冷環境下提供雙倍運算節點與記憶體池。</li>
+            <li><strong>HPE DL380a Gen12 (4U)：</strong> 雙路 x86，最多 8 張雙寬 PCIe GPU，高擴展性。</li>
+            <li><strong>DELL R760xa (2U)：</strong> 雙路 x86，最多 4 張雙寬 PCIe GPU。</li>
+            <li><strong>Supermicro ARS-111GL-NHR (1U)：</strong> 單顆 GH200。散熱壓力極大。</li>
+            <li><strong>Supermicro SYS-421GE-TNRT (4U)：</strong> 雙路 x86，最多 10 張雙寬 GPU。</li>
+        </ul>
+    </div>
+
+    <div class="slide">
+        <h1>選型規劃：HPE DL384 Gen12 + Dual GH200 NVL2</h1>
+        
+        <h2>1. 任務隔離：零編譯負擔</h2>
+        <p>伺服器僅負責 LLM 推論，韌體編譯與 Agent 部署於外部主機。因此，轉換至 ARM 架構 (Grace CPU) 不會產生軟體相容性與編譯成本。</p>
+
+        <h2>2. 排除 GB200</h2>
+        <p>GB200 依賴機櫃級液冷與高電力負載，目前市場缺乏符合 4U 內且具備標準氣冷的單機方案。</p>
+
+        <h2>3. 容量與頻寬優勢 (GH200 vs H200)</h2>
+        <p>80B 模型需約 160GB VRAM。單張 H200 (141GB) 無法獨立載入；若採多卡 x86 伺服器，跨卡通訊將受限於 PCIe 延遲。</p>
+
+        <h2>4. 最終效益</h2>
+        <p>Dual GH200 NVL2 總計提供 288GB HBM3e 與 960GB LPDDR5X 記憶體池。透過 NVLink 互連規避 PCIe 瓶頸，在氣冷伺服器框架下，最大化推論吞吐量與 Context Window。</p>
+    </div>
+
+</body>
+</html>
